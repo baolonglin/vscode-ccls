@@ -28,6 +28,7 @@ import {
 import { Converter } from "vscode-languageclient/lib/common/protocolConverter";
 import * as ls from "vscode-languageserver-types";
 import * as WebSocket from 'ws';
+import * as fs from 'fs';
 import { CclsErrorHandler } from "./cclsErrorHandler";
 import { cclsChan, logChan } from './globalContext';
 import { CallHierarchyProvider } from "./hierarchies/callHierarchy";
@@ -292,6 +293,21 @@ export class ServerContext implements Disposable {
     }
 
     this._dispose.push(commands.registerCommand("ccls.reload", this.reloadIndex, this));
+
+    if (config.get('index.reloadDatabaseOnChange', true)) {
+      let db_dir = config.get('misc.compilationDatabaseDirectory');
+      if (!db_dir || db_dir === '')
+        db_dir = this.cwd;
+      const db_path = db_dir + '/compile_commands.json';
+      // resolve db_path in case it is a symlink, otherwise the file system watcher
+      // won't catch modifications of the linked file
+      const db_real_path = fs.realpathSync(db_path);
+      const db_watcher = workspace.createFileSystemWatcher(db_real_path, false, false, false);
+      this._dispose.push(db_watcher);
+      db_watcher.onDidChange((e: Uri) => {
+        this.client.sendNotification("workspace/didChangeConfiguration");
+      });
+    }
   }
 
   public async stop() {

@@ -1,8 +1,11 @@
-import { StatusBarAlignment, StatusBarItem, window } from "vscode";
+import { StatusBarAlignment, StatusBarItem, window, workspace } from "vscode";
 import { Disposable } from "vscode-jsonrpc";
 import { LanguageClient } from "vscode-languageclient/node";
 import { cclsChan } from './globalContext';
 import { dedent, unwrap } from './utils';
+import * as fs from 'fs';
+import * as path from 'path'
+
 
 interface CclsInfoResponse {
   db: {
@@ -40,6 +43,27 @@ export class StatusBarIconProvider implements Disposable {
     this.icon.dispose();
   }
 
+  private getTarget() {
+    const config = workspace.getConfiguration('ccls');
+    let db_dir = config.get('misc.compilationDatabaseDirectory');
+    if (!db_dir || db_dir === '') {
+      const wss = workspace.workspaceFolders;
+      if (wss !== undefined && wss.length > 0) {
+        db_dir = wss[0].uri.fsPath;
+      }
+    }
+    if (db_dir && db_dir !== '') {
+      const db_path = db_dir + '/compile_commands.json';
+      const db_real_path = fs.realpathSync(db_path);
+
+      const file_name = path.parse(db_real_path).name
+      if (file_name.startsWith("compile_commands_")) {
+        return file_name.substring(17).toUpperCase()
+      }
+    }
+    return '';
+  }
+
   private async updateStatus() {
     let info: CclsInfoResponse;
     try {
@@ -55,11 +79,12 @@ export class StatusBarIconProvider implements Disposable {
       unwrap(cclsChan).show();
       return;
     }
+
     const lastIdle = info.pipeline.lastIdle || 0;
     const completed = info.pipeline.completed || 0;
     const enqueued = info.pipeline.enqueued || 0;
     this.icon.color = "";
-    this.icon.text = `ccls: ${completed}/${enqueued} jobs`;
+    this.icon.text = `ccls(${this.getTarget()}): ${completed}/${enqueued} jobs`;
     this.icon.tooltip = `${info.db.files} files,
 ${info.db.funcs} functions,
 ${info.db.types} types,

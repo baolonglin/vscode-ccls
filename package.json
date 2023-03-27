@@ -3,7 +3,7 @@
   "description": "C/C++/ObjC language server supporting cross references, hierarchies, completion and semantic highlight",
   "author": "ccls-project",
   "license": "MIT",
-  "version": "0.1.29",
+  "version": "0.1.30",
   "publisher": "ccls-project",
   "repository": {
     "type": "git",
@@ -705,6 +705,11 @@
           "type": "string",
           "default": "",
           "description": "When set, logs all LSP messages to specified WebSocket endpoint."
+        },
+        "ccls.index.reloadDatabaseOnChange": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reload the compilation database when it is modified."
         }
       }
     }
